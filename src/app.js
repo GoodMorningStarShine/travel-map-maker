@@ -1,4 +1,7 @@
 const STORAGE_KEY = "travel-map-maker:places";
+const MIN_VISIBLE_SLOTS = 6;
+const MAX_STOPS = 12;
+const AVERAGE_TRAVEL_SPEED_MPH = 45;
 
 const initialView = {
   center: [39.8283, -98.5795],
@@ -29,10 +32,15 @@ let markers = new Map();
 renderPlaces();
 
 map.on("click", (event) => {
+  if (places.length >= MAX_STOPS) {
+    placeNameInput.value = "";
+    return;
+  }
+
   const typedName = placeNameInput.value.trim();
   const place = {
     id: crypto.randomUUID(),
-    name: typedName || `Place ${places.length + 1}`,
+    name: typedName || `Destination ${places.length + 1}`,
     lat: Number(event.latlng.lat.toFixed(6)),
     lng: Number(event.latlng.lng.toFixed(6)),
     createdAt: new Date().toISOString(),
@@ -68,6 +76,7 @@ importInput.addEventListener("change", async () => {
 
   places = data.places
     .filter((place) => typeof place.lat === "number" && typeof place.lng === "number")
+    .slice(0, MAX_STOPS)
     .map((place) => ({
       id: place.id || crypto.randomUUID(),
       name: String(place.name || "Untitled place"),
@@ -108,7 +117,7 @@ function renderPlaces() {
   markers = new Map();
 
   placesList.innerHTML = "";
-  placeCount.textContent = String(places.length);
+  placeCount.textContent = `${places.length}/${MAX_STOPS}`;
 
   places.forEach((place) => {
     const marker = L.marker([place.lat, place.lng])
@@ -117,8 +126,9 @@ function renderPlaces() {
     markers.set(place.id, marker);
 
     const item = document.createElement("li");
-    item.className = "place-card";
+    item.className = "destination-card";
     item.innerHTML = `
+      <span class="stop-number">${markers.size}</span>
       <div>
         <strong>${escapeHtml(place.name)}</strong>
         <span class="coordinates">${place.lat}, ${place.lng}</span>
@@ -138,12 +148,73 @@ function renderPlaces() {
     });
 
     placesList.append(item);
+
+    const nextPlace = places[places.indexOf(place) + 1];
+    if (nextPlace) {
+      placesList.append(createRouteLeg(place, nextPlace));
+    }
   });
+
+  const visibleSlots = Math.min(MAX_STOPS, Math.max(MIN_VISIBLE_SLOTS, places.length + 1));
+  for (let slot = places.length + 1; slot <= visibleSlots; slot += 1) {
+    if (slot > MAX_STOPS) break;
+    const item = document.createElement("li");
+    item.className = "destination-card destination-card-empty";
+    item.innerHTML = `
+      <span class="stop-number">${slot}</span>
+      <div>
+        <strong>Open destination</strong>
+        <span class="coordinates">Click the map to fill this stop</span>
+      </div>
+    `;
+    placesList.append(item);
+  }
 
   if (places.length > 0) {
     const bounds = L.latLngBounds(places.map((place) => [place.lat, place.lng]));
     map.fitBounds(bounds.pad(0.25), { maxZoom: 10 });
   }
+}
+
+function createRouteLeg(start, end) {
+  const distance = getDistanceMiles(start, end);
+  const minutes = Math.round((distance / AVERAGE_TRAVEL_SPEED_MPH) * 60);
+  const item = document.createElement("li");
+  item.className = "route-leg";
+  item.innerHTML = `
+    <span>${formatDistance(distance)}</span>
+    <span>${formatTravelTime(minutes)}</span>
+  `;
+  return item;
+}
+
+function getDistanceMiles(start, end) {
+  const earthRadiusMiles = 3958.8;
+  const startLat = toRadians(start.lat);
+  const endLat = toRadians(end.lat);
+  const latDelta = toRadians(end.lat - start.lat);
+  const lngDelta = toRadians(end.lng - start.lng);
+  const a =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMiles * c;
+}
+
+function toRadians(degrees) {
+  return (degrees * Math.PI) / 180;
+}
+
+function formatDistance(distance) {
+  if (distance < 10) return `${distance.toFixed(1)} mi`;
+  return `${Math.round(distance)} mi`;
+}
+
+function formatTravelTime(minutes) {
+  if (minutes < 60) return `${Math.max(1, minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }
 
 function escapeHtml(value) {
