@@ -11,14 +11,14 @@
     <main class="app-shell">
       <aside class="panel" aria-label="Map controls">
         <div class="brand">
-          <p class="eyebrow">Trip Builder</p>
-          <h1>Travel Map Maker</h1>
+          <p class="eyebrow">Trip Planner</p>
+          <h1>Route Map</h1>
         </div>
 
         <section class="control-group">
-          <label for="place-name">Place name</label>
-          <input id="place-name" type="text" placeholder="Cafe, lookout, hotel...">
-          <p class="hint">Click the map to drop a pin with this name.</p>
+          <label for="place-name">Destination name</label>
+          <input id="place-name" type="text" placeholder="Hotel, museum, beach...">
+          <p class="hint">Click the map to add a destination. You can add up to 12 stops.</p>
         </section>
 
         <section class="toolbar" aria-label="Map actions">
@@ -30,10 +30,10 @@
 
         <section class="places-section">
           <div class="section-heading">
-            <h2>Saved Places</h2>
-            <span id="place-count">0</span>
+            <h2>Destinations</h2>
+            <span id="place-count">0/12</span>
           </div>
-          <ol id="places-list" class="places-list"></ol>
+          <ol id="places-list" class="destinations-list"></ol>
         </section>
       </aside>
 
